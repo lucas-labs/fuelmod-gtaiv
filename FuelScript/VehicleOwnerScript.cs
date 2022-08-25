@@ -15,12 +15,14 @@ namespace FuelScript {
         private Guid FuelMod = new Guid("3583e09d-6c44-4820-85e9-93926307d4f8");
         private bool blipsEnabled = false;
         private bool carColorsEnabled = false;
+        private readonly Logger Log = new Logger(typeof(VehicleOwnerScript).Name);
 
         public VehicleOwnerScript() {
-            this.KeyUp += new GTA.KeyEventHandler(VehicleOwnerScript_KeyUp);
+            KeyUp += new GTA.KeyEventHandler(VehicleOwnerScript_KeyUp);
 
             // Load my vehicles (El constructor se encargará de cargar todos los vehiculos mios si se le pasa true)
-            Log.debug("Intializizing CarOwnerScript");
+            Log.Debug("Intializizing");
+
             BindScriptCommand("CurrentFuel", new ScriptCommandDelegate(CurrentFuel));
 
             myVehiclesController = new MyVehiclesController(Player);
@@ -36,23 +38,23 @@ namespace FuelScript {
         {
             try
             {
-                Log.debug("Received FuelUpdate from FuelMod #" + Parameter.Count());
+                Log.Debug("Received FuelUpdate from FuelMod #" + Parameter.Count());
                 float fuel = Parameter.Convert<float>(0);
-                Log.debug("Fuel is " + fuel);
+                Log.Debug("Fuel is " + fuel);
                 myVehiclesController.SetFuel(fuel);
             }
-            catch (Exception crap) { Log.error("ERROR: SetVehicleFuel " + crap.Message); }
+            catch (Exception crap) { Log.Error("ERROR: SetVehicleFuel " + crap.Message); }
         }
 
         private void AskForFuelStatus()
         {
-            Log.debug("Asking for current fuel to FuelMod");
+            Log.Debug("Asking for current fuel to FuelMod");
             SendScriptCommand(FuelMod, "GetCurrentFuel");
         }
 
         private void SetFuel(float fuel, Vehicle vehicle)
         {
-            Log.debug("Sending vehicle fuel to FuelMod " + vehicle.Name + " -> " + fuel);
+            Log.Debug("Sending vehicle fuel to FuelMod " + vehicle.Name + " -> " + fuel);
             SendScriptCommand(FuelMod, "SetVehicleFuel", fuel, vehicle, "sendingFuel", ""+fuel);
         }
 
@@ -86,10 +88,10 @@ namespace FuelScript {
 
                 /*
                 if (carColorsEnabled) {
-                    Log.debug("PAUSE_GAME!");
+                    Log.Debug("PAUSE_GAME!");
                     GTA.Native.Function.Call("PAUSE_GAME");
                 } else {
-                    Log.debug("Unpausing game");
+                    Log.Debug("Unpausing game");
                     GTA.Native.Function.Call("UNPAUSE_GAME");                    
                 }*/
             }
@@ -125,21 +127,21 @@ namespace FuelScript {
 
             if (waypoint != null && waypoint.Exists()) {
                 try {
-                    Log.debug("bringMyCarHere start");
+                    Log.Debug("bringMyCarHere start");
                     var vehicle = World.GetClosestVehicle(waypoint.Position, 100);
 
                     if (vehicle != null && vehicle.Exists()) {
-                        Log.debug("Ok, the waypoint is a vehicle!");
+                        Log.Debug("Ok, the waypoint is a vehicle!");
                         Game.FadeScreenOut(1000, true);
                         vehicle.Position = Player.Character.Position.Around(50.0f);
                         vehicle.PlaceOnNextStreetProperly();
                         Game.FadeScreenIn(1000, true);
                         AdvancedHookManaged.AGame.PrintText("Now your vehicle " + ((Vehicle)vehicle).Name + " is near to you!");
                     } else {
-                        Log.error("Vehicle is null or not exist in game :(");
+                        Log.Error("Vehicle is null or not exist in game :(");
                     }
                 } catch (Exception ex) {
-                    Log.error("Error @ bringMyCarHere " + ex.Message);
+                    Log.Error("Error @ bringMyCarHere " + ex.Message);
                 }
             }
         }

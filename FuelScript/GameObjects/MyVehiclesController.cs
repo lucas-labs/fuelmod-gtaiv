@@ -10,6 +10,7 @@ using FuelScript.utils;
 namespace FuelScript.GameObjects {
     class MyVehiclesController {
         private static readonly string JSON_VEHICLES_FILE_PATH = "myVehicles.json";
+        private static readonly string JSON_SETTINGS = "\\scripts\\custom-vehicles-names-map.json";
 
         public delegate void SendFuelHandler(float fuel, Vehicle vehicle);
         public event SendFuelHandler SendFuel;
@@ -18,10 +19,12 @@ namespace FuelScript.GameObjects {
 
         public bool LoadVehiclesAtConstructionTime { get; set; }
         private List<OwnedVehicle> myVehicleList;
+        private Dictionary<string, string> customVehicleNames;
         private readonly List<Blip> blipsList;
         private int intents = 0;
         private readonly Player player;
-        
+        private GameNameModelNameTransformer GameNameTransformer;
+
         public MyVehiclesController(Player player) {
             this.player = player;
             blipsList = new List<Blip>();
@@ -34,38 +37,44 @@ namespace FuelScript.GameObjects {
 
         public void Load() {
             try {
-                Log.debug("Loading cars...");
+                // Logger.debug("Loading cars...");
                 TextReader textReader = new StreamReader(JSON_VEHICLES_FILE_PATH);
                 string jsonVehiclesFile = textReader.ReadLine();
                 textReader.Close();
-
-                jsonVehiclesFile = (jsonVehiclesFile == null) ? "" : jsonVehiclesFile;
-
+                jsonVehiclesFile = jsonVehiclesFile ?? "";
                 myVehicleList = JsonConvert.DeserializeObject<List<OwnedVehicle>>(jsonVehiclesFile);
-            } catch (Exception crap) {
-                Log.error(crap.Message);
+
+                TextReader textReaderCustomNames = new StreamReader(JSON_SETTINGS);
+                string jsonVehNamesMap = textReaderCustomNames.ReadLine();
+                textReaderCustomNames.Close();
+                jsonVehNamesMap = jsonVehNamesMap ?? "";
+                customVehicleNames = JsonConvert.DeserializeObject<Dictionary<string, string>>(jsonVehNamesMap);
+            } catch {
+                // Logger.Error(crap.Message);
                 myVehicleList = new List<OwnedVehicle>();
+                customVehicleNames = new Dictionary<string, string>();
             }
+
+            GameNameTransformer = new GameNameModelNameTransformer(customVehicleNames);
         }
 
         public void SaveVehicles() {
             try {
-                Log.debug("Saving cars");
+                // Logger.debug("Saving cars");
                 TextWriter jsonWriter = new StreamWriter(JSON_VEHICLES_FILE_PATH);
                 var json = JsonConvert.SerializeObject(myVehicleList);
                 jsonWriter.Write(json);
                 jsonWriter.Close();
-                Log.debug("Vehicles saved.");
-            } catch (Exception ex) {
-                Log.error(ex.Message);
+                // Logger.debug("Vehicles saved.");
+            } catch {
+                // Logger.error(ex.Message);
             }
         }
 
         public bool AddVehicle(Vehicle vehicle) {
             if (myVehicleList.Count < 10 && !ImOwnerOf(vehicle)) {
-                Log.debug("Adding vehicle " + vehicle.Name);
+                // Logger.debug("Adding vehicle " + vehicle.Name);
                 myVehicleList.Add(new OwnedVehicle(vehicle));
-                Log.debug("Added");
                 return true;
             } else return false;
         }
@@ -95,11 +104,11 @@ namespace FuelScript.GameObjects {
                     }
                     else
                     {
-                        Log.debug("Not inside one of my vehicles");
+                        // Logger.debug("Not inside one of my vehicles");
                     }
                 }
                 {
-                    Log.debug("Current vehicule is null....");
+                    // Logger.debug("Current vehicule is null....");
                 }
             }
 
@@ -120,7 +129,7 @@ namespace FuelScript.GameObjects {
         public bool DeleteVehicle(Vehicle vehicle) {
             foreach (var veh in myVehicleList) {
                 if (vehicle == veh.vehicleInGame) {
-                    Log.debug("Removing vehicle!");
+                    // Logger.debug("Removing vehicle!");
                     return myVehicleList.Remove(veh);
                 }
             }
@@ -140,14 +149,14 @@ namespace FuelScript.GameObjects {
         {
             if (fuel < 0)
             {
-                Log.debug("Fuel not Setted, was " + fuel);
+                // Logger.debug("Fuel not Setted, was " + fuel);
                 return;
             }
 
             var ownVeh = GetCurrentOwnedVehicle();
             if (ownVeh == null)
             {
-                Log.debug("Cant set fuel, vehicule is null");
+                // Logger.debug("Cant set fuel, vehicule is null");
                 return;
             }
 
@@ -156,11 +165,11 @@ namespace FuelScript.GameObjects {
             try
             {
                 ownVeh.Fuel = fuel;
-                Log.debug("Setted fuel (" + fuel + ") for " + ownVeh.GameName);
+                // Logger.debug("Setted fuel (" + fuel + ") for " + ownVeh.GameName);
             }
             catch (Exception ex)
             {
-                Log.error("Setted not updated, error getting Fuel: " + ex.Message);
+                // Logger.error("Setted not updated, error getting Fuel: " + ex.Message);
             }
         }
 
@@ -177,14 +186,14 @@ namespace FuelScript.GameObjects {
                 UpdateFuel();
             } else
             {
-                Log.debug("Current Owned Vehicle couldn't be obtained");
+                // Logger.debug("Current Owned Vehicle couldn't be obtained");
             }
         }
 
         public void ManageInGameVehiclesCreation(Vector3 actualPlayerPositon) {
             foreach (var ownedVehicle in myVehicleList) {
                 if (actualPlayerPositon.DistanceTo(ownedVehicle.Position) < 200 && !ownedVehicle.IsInGame()) {
-                    Log.debug("Creating vehicle " + ownedVehicle.GameName);
+                    // Logger.debug("Creating vehicle " + ownedVehicle.GameName);
                     //Create it
                     SpawnVehicle(ownedVehicle, false);
                 }
@@ -229,7 +238,7 @@ namespace FuelScript.GameObjects {
                         Game.DisplayText("We can't trace your " + ownedVehicle.GameName + " at this moment.");
                     }
                 } else {
-                    Log.error(ex.Message);
+                    // Logger.error(ex.Message);
                 }
             }
 
@@ -238,7 +247,7 @@ namespace FuelScript.GameObjects {
 
         private void CreateVehicleIfNotExists(OwnedVehicle ownedVehicle) {
             if (!ownedVehicle.IsInGame()) {
-                Log.debug("Creating vehicle " + ownedVehicle.GameName);
+                // Logger.debug("Creating vehicle " + ownedVehicle.GameName);
                 //Create it
                 var vehInGame = SpawnVehicle(ownedVehicle, true);
             } else {
@@ -256,10 +265,9 @@ namespace FuelScript.GameObjects {
             try {
                 // Some model names are not equal than theirs vehicle game names. 
                 // So we get the modelName from settings file 
-                // (example: Super GT modelName= 'supergt', since Super GT gameName = 'super').
-
-                Log.debug("Creating vehicle -> " + ownedVehicle.GameName + ":" + GameNameModelNameTransformer.transformOrGetKey(ownedVehicle.GameName));
-                var vehInGame = World.CreateVehicle(GameNameModelNameTransformer.transformOrGetKey(ownedVehicle.GameName), ownedVehicle.Position);
+                // (example: Super GT modelName= 'supergt', Super GT gameName = 'super').
+                // Logger.debug("Creating vehicle -> " + ownedVehicle.GameName + ":" + GameNameModelNameTransformer.transformOrGetKey(ownedVehicle.GameName));
+                var vehInGame = World.CreateVehicle(GameNameTransformer.TransformOrGetKey(ownedVehicle.GameName), ownedVehicle.Position);
                 
                 if (needed) {
                     vehInGame.isRequiredForMission = true;
@@ -281,7 +289,7 @@ namespace FuelScript.GameObjects {
 
                 if(ownedVehicle.Fuel >= 0)
                 {
-                    Log.debug("Sending fuel to FuelMod: " + ownedVehicle.Fuel);
+                    // Logger.debug("Sending fuel to FuelMod: " + ownedVehicle.Fuel);
                     SendFuel(ownedVehicle.Fuel, vehInGame);
                 }
                 
@@ -289,7 +297,7 @@ namespace FuelScript.GameObjects {
                 ownedVehicle.vehicleInGame = vehInGame;
                 return vehInGame;
             } catch (Exception ex) {
-                Log.error("Error while spawning " + ownedVehicle.GameName + " vehicle: " + ex.Message);
+                // Logger.error("Error while spawning " + ownedVehicle.GameName + " vehicle: " + ex.Message);
                 return null;
             }
         }
