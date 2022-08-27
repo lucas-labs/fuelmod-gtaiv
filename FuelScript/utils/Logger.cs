@@ -22,7 +22,9 @@ namespace FuelScript.utils
         public Logger(string script)
         {
             this.script = script;
-            filePath = Application.StartupPath + "\\scripts\\" + script + ".log";
+            filePath = Application.StartupPath + "\\scripts\\logs\\" + script + ".log";
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+
             try
             {
                 var fileInfo = new FileInfo(filePath);
@@ -93,7 +95,7 @@ namespace FuelScript.utils
             {
                 using (StreamWriter streamWriter = File.AppendText(filePath))
                 {
-                    streamWriter.WriteLine(DateTime.Now.ToString("[" + "dd-MM-yyyy hh:mm:ss.fff tt") + "][" + level + "][" + script + method + "] " + message);
+                    streamWriter.Write(DateTime.Now.ToString("[" + "dd-MM-yyyy hh:mm:ss.fff tt") + "][" + level + "][" + script + method + "] " + message + "\n");
                     streamWriter.Close();
                 }
             }

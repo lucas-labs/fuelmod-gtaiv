@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.IO;
 
 namespace FuelScript.GameObjects {
     public class GameNameModelNameTransformer {
-        private readonly Dictionary<string, string> collection = new Dictionary<string, string>() {
+        public readonly Dictionary<string, string> Collection = new Dictionary<string, string>() {
             {"AMBULAN","ambulance"},
             {"CAVCADE","cavalcade"},
             {"CHAV","chavos"},
@@ -35,14 +37,13 @@ namespace FuelScript.GameObjects {
             // agrego los que vengan por json
             foreach (var veh in customVehiclesNames) 
             {
-                collection[veh.Key] = veh.Value;
+                Collection[veh.Key] = veh.Value;
             }
         }
 
-
         public string TransformOrGetKey(string key) {
             try {
-                if (collection.TryGetValue(key, out string value))
+                if (Collection.TryGetValue(key, out string value))
                 {
                     return value;
                 }

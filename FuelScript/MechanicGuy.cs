@@ -140,11 +140,17 @@ namespace FuelScript
                     return;
                 }
 
-                var MikesBike = World.CreateVehicle(new Model("bobber"), World.GetNextPositionOnStreet(Player.Character.Position.Around(100.0f)));
+                var MikesBike = World.CreateVehicle(new Model("bobber"), World.GetNextPositionOnStreet(Player.Character.Position.Around(0.0f)));
                 while (!MikesBike.Exists())
                 {
                     Wait(500);
                 }
+
+                if(MikesBike.Exists())
+                {
+                    ShowMessage("MikeBikes exists", 1000);
+                }
+
                 MikesBike.MakeProofTo(true, true, true, true, true);
                 MikesBike.PlaceOnNextStreetProperly();
                 var Mike = MikesBike.CreatePedOnSeat(VehicleSeat.Driver, new Model("m_y_mechanic_02"));
@@ -154,14 +160,13 @@ namespace FuelScript
                 try
                 {
                     // lets trap niko inside the vehicle
-                    veh.DoorLock = DoorLock.ImpossibleToOpen;
-                    veh.EngineRunning = false;
+                    //veh.DoorLock = DoorLock.ImpossibleToOpen;
+                    //veh.EngineRunning = false;
 
                     // mike's Service Drive To position.
                     Vector3 DriveToPosition = veh.GetOffsetPosition(new Vector3(5.0f, 0.0f, 0.0f));
                     // Hood position.
                     Vector3 HoodPosition = veh.GetOffsetPosition(new Vector3(0.0f, 3.0f, 0.0f));
-                    
 
                     while (!Mike.Exists())
                     {
@@ -196,9 +201,8 @@ namespace FuelScript
                     TaskSequence DriveToNiko = new TaskSequence();
                     DriveToNiko.AddTask.DriveTo(DriveToPosition, 15.0f, false, true);
                     DriveToNiko.AddTask.LeaveVehicle();
-                    Mike.Task.PerformSequence(DriveToNiko);
                     ShowMessage("Mike ya esta de camino. Esperalo aquí.", 3000);
-                    WaitForTask(DriveToNiko, mikeAdv, Mike);
+                    PerformSequence("drive-to-niko", DriveToNiko, Mike);
 
                     Mike.SayAmbientSpeech("GENERIC_HI");
 
@@ -207,8 +211,7 @@ namespace FuelScript
                     RunToCarAndOpenHood.AddTask.RunTo(HoodPosition, false);
                     RunToCarAndOpenHood.AddTask.TurnTo(veh.Position);
                     RunToCarAndOpenHood.AddTask.PlayAnimation(new AnimationSet("amb@bridgecops"), "open_boot", 4.0f);
-                    Mike.Task.PerformSequence(RunToCarAndOpenHood);
-                    WaitForTask(RunToCarAndOpenHood, mikeAdv, Mike);
+                    PerformSequence("run-to-car-and-open-hood", RunToCarAndOpenHood, Mike);
                     veh.Door(VehicleDoor.Hood).Open();
                     Wait(1200);
 
@@ -216,8 +219,8 @@ namespace FuelScript
                     TaskSequence FixTheCar = new TaskSequence();
                     FixTheCar.AddTask.PlayAnimation(new AnimationSet("misstaxidepot"), "workunderbonnet", 4.0f);
                     FixTheCar.AddTask.PlayAnimation(new AnimationSet("amb@bridgecops"), "close_boot", 4.0f);
-                    Mike.Task.PerformSequence(FixTheCar);
-                    WaitForTask(FixTheCar, mikeAdv, Mike);
+                    PerformSequence("fix-the-car", FixTheCar, Mike);
+
                     veh.Door(VehicleDoor.Hood).Close();
                     veh.Repair();
 
@@ -239,6 +242,7 @@ namespace FuelScript
                     Mike.Task.AlwaysKeepTask = true;
 
                     // Get Out
+                    ShowMessage("Mike ya se va", 3000);
                     TaskSequence GetOut = new TaskSequence();
                     GetOut.AddTask.EnterVehicle(MikesBike, VehicleSeat.Driver);
                     GetOut.AddTask.CruiseWithVehicle(MikesBike, 35.0f, true);
@@ -246,7 +250,8 @@ namespace FuelScript
                     MikesBike.MakeProofTo(false, false, false, false, false);
                     Mike.NoLongerNeeded();
                     MikesBike.NoLongerNeeded();
-                    Mike.Task.PerformSequence(GetOut);
+                    PerformSequence("get-out", GetOut, Mike, false);
+                    ShowMessage("All Done!", 3000);
                 }
                 catch (Exception ex)
                 {
@@ -266,42 +271,55 @@ namespace FuelScript
                     
                     Log.Error(ex.Message);
                 }
-                
-                
             }
         }
 
-        private void WaitForTask(TaskSequence task, APed advPed, Ped ped)
+        private void PerformSequence(string name, TaskSequence seq, Ped ped)
         {
-            var aTaskActive = advPed.IsTaskActive(task.Handle);
-            var count = 0;
-            while(!aTaskActive)
-            {
-                Wait(100);
-                aTaskActive = advPed.IsTaskActive(task.Handle);
-                count++;
-
-                if(count >= 1200 ) // espero 2 minutos
-                {
-                    throw new Exception("2 minutos sin finalizar la tarea");
-                }
-            }
-
-            count = 0;
-            while(aTaskActive)
-            {
-                Wait(100);
-                aTaskActive = advPed.IsTaskActive(task.Handle);
-                if (count >= 1200) // espero 2 minutos
-                {
-                    throw new Exception("2 minutos sin finalizar la tarea");
-                }
-            }
-            advPed.AbortTask(task.Handle, 1);
-            ped.Task.ClearAllImmediately();
-            ped.Task.ClearAll();
+            PerformSequence(name, seq, ped, true);
         }
 
+        private void PerformSequence(string name, TaskSequence seq, Ped ped, bool wait)
+        {
+            Log.Debug("Starting sequence " + name);
+            var datingSet = new AnimationSet("amb@dating");
+
+            // agrego esta animacion al final de la secuencia como "indicador" de que termino... una truchada pero bue, otra no me anduvo
+            // esta animacion solo funciona parado y tambien en auto y creo que no es muy comun (se da en algun momento en las citas)...
+            // la idea es detectar cuando se esté ejecutando esta animacion para determinar el fin de la secuencia.
+            if(wait)
+            {
+                seq.AddTask.PlayAnimation(datingSet, "niko_incar_partial", 1.0f);
+            }
+
+            // ejecuto la secuencia
+            ped.Task.PerformSequence(seq);
+
+            if(wait)
+            {
+                bool hasEnded;
+                var count = 0;
+                do
+                {
+                    hasEnded = ped.Animation.isPlaying(datingSet, "niko_incar_partial");
+                    if (!hasEnded) Wait(100);
+
+                    if (count >= 1200) // espero 2 minutos
+                    {
+                        throw new Exception("2 minutos sin finalizar la tarea");
+                    }
+                } while (!hasEnded);
+
+                ped.Task.ClearAllImmediately();
+                ped.Task.ClearAll();
+                Log.Debug("Sequence " + name + " has ended");
+                return;
+            }
+
+            // sequence
+            Log.Debug("Sequence " + name + " is running (but we're not waiting for it to finish)");
+
+        }
         private void DisplayText(string message)
         {
             AGame.PrintText(message);
@@ -321,7 +339,6 @@ namespace FuelScript
             {
                 UIMenu.HideAllMenus();
             }
-
 
             if(Player.Character.isInVehicle())
             {
@@ -377,3 +394,4 @@ namespace FuelScript
         }
     }
 }
+

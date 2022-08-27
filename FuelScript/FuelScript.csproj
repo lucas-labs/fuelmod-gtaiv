@@ -118,6 +118,9 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GameObjects\LScript.cs" />
+    <Compile Include="GameObjects\Sequences.cs" />
+    <Compile Include="ICanFixIt.cs" />
     <Compile Include="MechanicGuy.cs" />
     <Compile Include="SpeedoScript.cs" />
     <Compile Include="FuelScript.cs">
@@ -145,6 +148,7 @@
     <Content Include="Assets\custom-vehicles-names-map.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <None Include="Assets\custom-labels.json" />
     <None Include="Resources\cover.bmp" />
     <EmbeddedResource Include="Resources\resSound.wav" />
     <None Include="Assets\GTAIV.ico" />

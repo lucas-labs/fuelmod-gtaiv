@@ -1553,7 +1553,6 @@ namespace FuelScript {
                     // set metadata
                     CurrentVehicle.Metadata.EngineRunning = true;
                     CalculateRPM();
-                    
 
                     // If player set as refueling...
                     if (Refueling) {

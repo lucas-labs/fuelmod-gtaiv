@@ -9,8 +9,10 @@ using FuelScript.utils;
 
 namespace FuelScript.GameObjects {
     class MyVehiclesController {
+        private readonly Logger Log = new Logger(typeof(MyVehiclesController).Name);
         private static readonly string JSON_VEHICLES_FILE_PATH = "myVehicles.json";
-        private static readonly string JSON_SETTINGS = "\\scripts\\custom-vehicles-names-map.json";
+        private static readonly string JSON_NAME_MAPS = "scripts\\custom-vehicles-names-map.json";
+        private static readonly string JSON_CUSTOM_LABELS = "scripts\\custom-labels.json";
 
         public delegate void SendFuelHandler(float fuel, Vehicle vehicle);
         public event SendFuelHandler SendFuel;
@@ -20,6 +22,8 @@ namespace FuelScript.GameObjects {
         public bool LoadVehiclesAtConstructionTime { get; set; }
         private List<OwnedVehicle> myVehicleList;
         private Dictionary<string, string> customVehicleNames;
+        private Dictionary<string, string> customLabels;
+        private string labelPrefix;
         private readonly List<Blip> blipsList;
         private int intents = 0;
         private readonly Player player;
@@ -30,44 +34,36 @@ namespace FuelScript.GameObjects {
             blipsList = new List<Blip>();
         }
 
-        // TODO: Necesito un "receptor" de fuel, que desde FuelScript envie cuanta nafta tiene
-        // cuando reciba (o le pida a FuelScript que me la mande) actualizo el OwnedVehicle.fuel
-        // y necesito un "enviador" de Fuel, para cuando apenas creo el vehicle le mando a FuelScript
-        // el valor de la "ultima partida" para que lo setee en vez de setear al azar
-
         public void Load() {
-            try {
-                // Logger.debug("Loading cars...");
-                TextReader textReader = new StreamReader(JSON_VEHICLES_FILE_PATH);
-                string jsonVehiclesFile = textReader.ReadLine();
-                textReader.Close();
-                jsonVehiclesFile = jsonVehiclesFile ?? "";
-                myVehicleList = JsonConvert.DeserializeObject<List<OwnedVehicle>>(jsonVehiclesFile);
+            Log.Debug("Loading configs");
+            myVehicleList = LoadJsonConfig(JSON_VEHICLES_FILE_PATH, new List<OwnedVehicle>());
+            customVehicleNames = LoadJsonConfig(JSON_NAME_MAPS, new Dictionary<string, string>());
+            customLabels = LoadJsonConfig(JSON_CUSTOM_LABELS, new Dictionary<string, string>());
+            customLabels.TryGetValue("_prefix", out labelPrefix); // get the prefix
 
-                TextReader textReaderCustomNames = new StreamReader(JSON_SETTINGS);
-                string jsonVehNamesMap = textReaderCustomNames.ReadLine();
-                textReaderCustomNames.Close();
-                jsonVehNamesMap = jsonVehNamesMap ?? "";
-                customVehicleNames = JsonConvert.DeserializeObject<Dictionary<string, string>>(jsonVehNamesMap);
-            } catch {
-                // Logger.Error(crap.Message);
-                myVehicleList = new List<OwnedVehicle>();
-                customVehicleNames = new Dictionary<string, string>();
+            if (labelPrefix == null)
+            {
+                labelPrefix = "";
             }
+
+            Log.Debug("Blip prefix: " + labelPrefix);
 
             GameNameTransformer = new GameNameModelNameTransformer(customVehicleNames);
         }
 
+        public Dictionary<string, string> GetNamesReplacers()
+        {
+            return GameNameTransformer.Collection;
+        }
+
         public void SaveVehicles() {
             try {
-                // Logger.debug("Saving cars");
                 TextWriter jsonWriter = new StreamWriter(JSON_VEHICLES_FILE_PATH);
                 var json = JsonConvert.SerializeObject(myVehicleList);
                 jsonWriter.Write(json);
                 jsonWriter.Close();
-                // Logger.debug("Vehicles saved.");
-            } catch {
-                // Logger.error(ex.Message);
+            } catch (Exception ex) {
+                 Log.Error(ex.Message);
             }
         }
 
@@ -124,6 +120,24 @@ namespace FuelScript.GameObjects {
             }
 
             return null;
+        }
+
+        private T LoadJsonConfig<T>(string path, T defVal)
+        {
+            try
+            {
+                TextReader reader = new StreamReader(path);
+                string jsonString = reader.ReadToEnd();
+                reader.Close();
+                jsonString = jsonString ?? "";
+                Log.Debug(path + " loaded: " + jsonString);
+                return JsonConvert.DeserializeObject<T>(jsonString);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Error loading " + path + ": " + ex.Message);
+                return defVal;
+            }
         }
 
         public bool DeleteVehicle(Vehicle vehicle) {
@@ -225,7 +239,7 @@ namespace FuelScript.GameObjects {
                 blip.Icon = BlipIcon.Building_Garage;
                 blip.Color = BlipColor.Red;
                 blip.ShowOnlyWhenNear = false;
-                blip.Name = "My " + ownedVehicle.GameName;
+                blip.Name = GetLabel(ownedVehicle.GameName);
 
                 blipsList.Add(blip);
             } catch (Exception ex) {
@@ -245,6 +259,15 @@ namespace FuelScript.GameObjects {
             intents = 0;
         }
 
+        private string GetLabel(string vehicleName)
+        {
+            if (customLabels.TryGetValue(vehicleName, out var label))
+            {
+                return labelPrefix + label;
+            }
+            else return labelPrefix + vehicleName;            
+        }
+
         private void CreateVehicleIfNotExists(OwnedVehicle ownedVehicle) {
             if (!ownedVehicle.IsInGame()) {
                 // Logger.debug("Creating vehicle " + ownedVehicle.GameName);
@@ -254,7 +277,6 @@ namespace FuelScript.GameObjects {
                 ownedVehicle.vehicleInGame.isRequiredForMission = true;
             }
         }
-
 
         /// <summary>
         /// 

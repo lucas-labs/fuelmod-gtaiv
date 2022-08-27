@@ -30,6 +30,11 @@ namespace FuelScript {
             myVehiclesController.SendFuel += new MyVehiclesController.SendFuelHandler(SetFuel);
             myVehiclesController.Load();
 
+            Log.Info("LOAD complete. Replacers: ");
+            Log.Info(
+                JsonConvert.SerializeObject(myVehiclesController.GetNamesReplacers())
+            );
+
             Interval = 2000;
             this.Tick += new EventHandler(VehicleOwnerScript_Tick);
         }
@@ -64,6 +69,7 @@ namespace FuelScript {
         }
 
         void VehicleOwnerScript_KeyUp(object sender, GTA.KeyEventArgs e) {
+            Log.Info("KEYUP!");
             //TODO : Menu!
             if (e.Key == Keys.O) {
                 if (Player.Character.CurrentVehicle != null && Player.Character.CurrentVehicle.Exists()) {
@@ -155,8 +161,5 @@ namespace FuelScript {
 
             blipsEnabled = !blipsEnabled;
         }
-
-
-
     }
 }
